@@ -4,6 +4,10 @@
 
 extern BLERemoteCharacteristic* pRemoteCharacteristic;
 extern BLERemoteCharacteristic* pRemoteCharacteristic2;
+//队列
+extern QueueHandle_t xADCQueue;
+extern QueueHandle_t xSPIQueue;
+extern QueueHandle_t xBLEQueue;
 /*
 ADC采样霍尔传感器添加到队列中
 */
@@ -12,8 +16,8 @@ void adc_task(void *pvParameter){
     for(;;){
         DataPacket packet;
         packet.type = 0;
-        packet.data = analogReadMilliVolts(34);//读取引脚34的电压值
-
+        packet.data = analogReadMilliVolts(1);//读取引脚34的电压值
+        xQueueSend(xADCQueue, &packet, portMAX_DELAY);
         vTaskDelay(1000 / portTICK_PERIOD_MS);//延时1s
     }
 }
@@ -29,6 +33,7 @@ void spi_task(void *pvParameter){
 */
 void ble_receive_task(void *pvParameter){
     for(;;){
+
         // //初始化后开始连接
         // if (doConnect == true) {
         //     if (connectToServer()) {
