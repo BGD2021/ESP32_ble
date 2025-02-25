@@ -9,9 +9,9 @@ static BLEUUID serviceUUID("0000fff0-0000-1000-8000-00805f9b34fb");
 static BLEUUID    charUUID("0000fff1-0000-1000-8000-00805f9b34fb");
 static BLEUUID   charUUID2("0000fff2-0000-1000-8000-00805f9b34fb");
 //连接标志位
-static boolean doConnect = false;
-static boolean connected = false;
-static boolean doScan = false;
+boolean doConnect = false;
+boolean connected = false;
+boolean doScan = false;
 //特征值和设备
 
 BLERemoteCharacteristic* sRemoteCharacteristic;
@@ -145,8 +145,8 @@ bool connectToServer() {
  */
 class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
   void onResult(BLEAdvertisedDevice advertisedDevice) {
-    Serial.print("BLE Advertised Device found: ");
-    Serial.println(advertisedDevice.toString().c_str());
+    // Serial.print("BLE Advertised Device found: ");
+    // Serial.println(advertisedDevice.toString().c_str());
 
     //找到设备后，查找是否有我们需要的服务
     if (advertisedDevice.haveServiceUUID() && advertisedDevice.isAdvertisingService(serviceUUID)) {
@@ -154,8 +154,11 @@ class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
       BLEDevice::getScan()->stop();
       myDevice = new BLEAdvertisedDevice(advertisedDevice);
       doConnect = true;
-      doScan = true;
+      doScan = false;
 
+    }else{
+      Serial.println("No service found");
+      doScan = true;
     }
   } 
 }; 
@@ -198,76 +201,43 @@ void ble_init(){
 
 }
 
-void ble_task(void *pvParameter){
-    for(;;){
-        //初始化后开始连接
-        if (doConnect == true) {
-            if (connectToServer()) {
-            Serial.println("We are now connected to the BLE Server.");
-            } else {
-            Serial.println("We have failed to connect to the server; there is nothing more we will do.");
-            }
-            doConnect = false;
-        }
+// void ble_task(void *pvParameter){
+//     for(;;){
+//         //初始化后开始连接
+//         if (doConnect == true) {
+//             if (connectToServer()) {
+//             Serial.println("We are now connected to the BLE Server.");
+//             } else {
+//             Serial.println("We have failed to connect to the server; there is nothing more we will do.");
+//             }
+//             doConnect = false;
+//         }
 
-        //连接后开始读写
-        if (connected) {
-            uint8_t newValue = 0x18;  // 16进制的18
-            Serial.println("Setting new characteristic value to 0x18");
+//         //连接后开始读写
+//         if (connected) {
+//             uint8_t newValue = 0x18;  // 16进制的18
+//             Serial.println("Setting new characteristic value to 0x18");
             
         
-            sRemoteCharacteristic->writeValue(&newValue, 1);
+//             sRemoteCharacteristic->writeValue(&newValue, 1);
 
 
-            if (sRemoteCharacteristic->canRead()) {
-            std::string value = sRemoteCharacteristic->readValue();
-            Serial.print("The characteristic1 value is: ");
-            printHex(value);
-            }
-            if (sRemoteCharacteristic2->canRead()) {
-            std::string value = sRemoteCharacteristic2->readValue();
-            Serial.print("The characteristic2 value is: ");
-            printHex(value);
-            }
-        } else if (doScan) {//如果没有连接，继续扫描
-            BLEDevice::getScan()->start(0);
-        }
+//             if (sRemoteCharacteristic->canRead()) {
+//             std::string value = sRemoteCharacteristic->readValue();
+//             Serial.print("The characteristic1 value is: ");
+//             printHex(value);
+//             }
+//             if (sRemoteCharacteristic2->canRead()) {
+//             std::string value = sRemoteCharacteristic2->readValue();
+//             Serial.print("The characteristic2 value is: ");
+//             printHex(value);
+//             }
+//         } else if (doScan) {//如果没有连接，继续扫描
+//             BLEDevice::getScan()->start(0);
+//         }
         
-        vTaskDelay(1000 / portTICK_PERIOD_MS);//延时1s
-    }
-}
-
-void BLESendTask(void *pvParameters) {
-  for(;;) {
-    //检查ADC队列
-    if (uxQueueMessagesWaiting(xADCQueue) > 0) {
-      DataPacket packet;
-      xQueueReceive(xADCQueue, &packet, 0);
-      Serial.print("ADC data: ");
-      Serial.println(packet.data);
-      //将hex数据转换为字符串
-      char str[10];
-      sprintf(str, "%d", packet.data);
-      pCharacteristic->setValue(str);
-    }
-    //检查SPI队列
-    if (uxQueueMessagesWaiting(xSPIQueue) > 0) {
-      DataPacket packet;
-      xQueueReceive(xSPIQueue, &packet, 0);
-      Serial.print("SPI data: ");
-      Serial.println(packet.data);
-    }
-    //检查BLE队列
-    if (uxQueueMessagesWaiting(xBLEQueue) > 0) {
-      DataPacket packet;
-      xQueueReceive(xBLEQueue, &packet, 0);
-      Serial.print("BLE data: ");
-      Serial.println(packet.data);
-    }
-
-    // Serial.println("BLESendTask");
-    vTaskDelay(1000 / portTICK_PERIOD_MS);
-  }
-}
+//         vTaskDelay(1000 / portTICK_PERIOD_MS);//延时1s
+//     }
+// }
 
 
