@@ -13,8 +13,13 @@ static boolean doConnect = false;
 static boolean connected = false;
 static boolean doScan = false;
 //特征值和设备
-BLERemoteCharacteristic* pRemoteCharacteristic;
-BLERemoteCharacteristic* pRemoteCharacteristic2;
+
+BLERemoteCharacteristic* sRemoteCharacteristic;
+BLERemoteCharacteristic* sRemoteCharacteristic2;
+
+BLECharacteristic *pCharacteristic;
+BLECharacteristic *pCharacteristic2;
+
 static BLEAdvertisedDevice* myDevice;
 //主机的UUID
 #define SERVICE_UUID        "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
@@ -100,15 +105,15 @@ bool connectToServer() {
     Serial.println(" - Found our service");
 
     //连接特征值
-    pRemoteCharacteristic = pRemoteService->getCharacteristic(charUUID);
-    if (pRemoteCharacteristic == nullptr) {
+    sRemoteCharacteristic = pRemoteService->getCharacteristic(charUUID);
+    if (sRemoteCharacteristic == nullptr) {
       Serial.print("Failed to find our characteristic UUID: ");
       Serial.println(charUUID.toString().c_str());
       pClient->disconnect();
       return false;
     }
-    pRemoteCharacteristic2 = pRemoteService->getCharacteristic(charUUID2);
-    if (pRemoteCharacteristic == nullptr) {
+    sRemoteCharacteristic2 = pRemoteService->getCharacteristic(charUUID2);
+    if (sRemoteCharacteristic == nullptr) {
       Serial.print("Failed to find our characteristic UUID: ");
       Serial.println(charUUID2.toString().c_str());
       pClient->disconnect();
@@ -117,19 +122,19 @@ bool connectToServer() {
     Serial.println(" - Found our characteristic");
 
     //首次读取特征值
-    if(pRemoteCharacteristic->canRead()) {
-      std::string value = pRemoteCharacteristic->readValue();
+    if(sRemoteCharacteristic->canRead()) {
+      std::string value = sRemoteCharacteristic->readValue();
       Serial.print("The characteristic value was: ");
       Serial.println(value.c_str());
     }
-    if(pRemoteCharacteristic->canRead()) {
-      std::string value = pRemoteCharacteristic->readValue();
+    if(sRemoteCharacteristic->canRead()) {
+      std::string value = sRemoteCharacteristic->readValue();
       Serial.print("The characteristic value was: ");
       Serial.println(value.c_str());
     }
 
-    if(pRemoteCharacteristic->canNotify())
-      pRemoteCharacteristic->registerForNotify(notifyCallback);
+    if(sRemoteCharacteristic->canNotify())
+      sRemoteCharacteristic->registerForNotify(notifyCallback);
 
     connected = true;
     return true;
@@ -163,13 +168,13 @@ void ble_init(){
     BLEDevice::init("helloESP32");
     BLEServer *pServer = BLEDevice::createServer();
     BLEService *pService = pServer->createService(SERVICE_UUID);
-    BLECharacteristic *pCharacteristic = pService->createCharacteristic(
+    pCharacteristic = pService->createCharacteristic(
                                            CHARACTERISTIC_UUID,
                                            BLECharacteristic::PROPERTY_READ |
                                            BLECharacteristic::PROPERTY_WRITE
                                          );
   
-    pCharacteristic->setValue("Hello World says Neil");
+    pCharacteristic->setValue("Hello World");
     pService->start();
     //得到广播对象
     BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
@@ -211,16 +216,16 @@ void ble_task(void *pvParameter){
             Serial.println("Setting new characteristic value to 0x18");
             
         
-            pRemoteCharacteristic->writeValue(&newValue, 1);
+            sRemoteCharacteristic->writeValue(&newValue, 1);
 
 
-            if (pRemoteCharacteristic->canRead()) {
-            std::string value = pRemoteCharacteristic->readValue();
+            if (sRemoteCharacteristic->canRead()) {
+            std::string value = sRemoteCharacteristic->readValue();
             Serial.print("The characteristic1 value is: ");
             printHex(value);
             }
-            if (pRemoteCharacteristic2->canRead()) {
-            std::string value = pRemoteCharacteristic2->readValue();
+            if (sRemoteCharacteristic2->canRead()) {
+            std::string value = sRemoteCharacteristic2->readValue();
             Serial.print("The characteristic2 value is: ");
             printHex(value);
             }
@@ -240,6 +245,10 @@ void BLESendTask(void *pvParameters) {
       xQueueReceive(xADCQueue, &packet, 0);
       Serial.print("ADC data: ");
       Serial.println(packet.data);
+      //将hex数据转换为字符串
+      char str[10];
+      sprintf(str, "%d", packet.data);
+      pCharacteristic->setValue(str);
     }
     //检查SPI队列
     if (uxQueueMessagesWaiting(xSPIQueue) > 0) {
