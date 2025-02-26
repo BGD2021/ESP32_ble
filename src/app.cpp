@@ -13,6 +13,10 @@ extern boolean doConnect;
 extern boolean connected;
 extern boolean doScan;
 
+//任务完成标志
+bool ADC_TASK_COPMLETE = false;
+bool SPI_TASK_COPMLETE = false;
+bool BLE_TASK_COPMLETE = false;
 /*
 ADC采样霍尔传感器添加到队列中
 */
@@ -21,9 +25,26 @@ void adc_task(void *pvParameter){
     for(;;){
         DataPacket packet;
         packet.type = 0;
-        packet.data = analogReadMilliVolts(1);//读取引脚34的电压值
+        // packet.data = analogReadMilliVolts(1);//读取引脚34的电压值
+        //进行五次采样去掉最高最低值，取平均值
+        uint32_t sum = 0;
+        uint32_t max = 0;
+        uint32_t min = 4096;
+        for(int i = 0; i < 5; i++){
+            uint32_t value = analogRead(1);
+            sum += value;
+            if(value > max){
+                max = value;
+            }
+            if(value < min){
+                min = value;
+            }
+        }
+        packet.data = (sum - max - min) / 3;
         xQueueSend(xADCQueue, &packet, portMAX_DELAY);
-        vTaskDelay(1000 / portTICK_PERIOD_MS);//延时1s
+        // vTaskDelay(1000 / portTICK_PERIOD_MS);//延时1s
+        ADC_TASK_COPMLETE = true;
+        vTaskSuspend(NULL);
     }
 }
 /*
@@ -55,6 +76,7 @@ void ble_receive_task(void *pvParameter){
                 packet.type = 2;
                 packet.data = value;
                 xQueueSend(xBLEQueue, &packet, portMAX_DELAY);
+                BLE_TASK_COPMLETE = true;//任务完成
             }
             if (sRemoteCharacteristic2->canRead()) {
                 uint8_t value = sRemoteCharacteristic2->readUInt8();
@@ -66,31 +88,8 @@ void ble_receive_task(void *pvParameter){
             }
         }else if(doScan){
             BLEDevice::getScan()->start(0);
-            doScan = false;
+            doScan = false;//重新开始扫描
         }
-        // //连接后开始读写
-        // if (connected) {
-        //     uint8_t newValue = 0x18;  // 16进制的18
-        //     Serial.println("Setting new characteristic value to 0x18");
-            
-        
-        //     pRemoteCharacteristic->writeValue(&newValue, 1);
-
-
-        //     if (pRemoteCharacteristic->canRead()) {
-        //     std::string value = pRemoteCharacteristic->readValue();
-        //     Serial.print("The characteristic1 value is: ");
-        //     printHex(value);
-        //     }
-        //     if (pRemoteCharacteristic2->canRead()) {
-        //     std::string value = pRemoteCharacteristic2->readValue();
-        //     Serial.print("The characteristic2 value is: ");
-        //     printHex(value);
-        //     }
-        // } else if (doScan) {//如果没有连接，继续扫描
-        //     BLEDevice::getScan()->start(0);
-        // }
-        
         vTaskDelay(10000 / portTICK_PERIOD_MS);//延时1s
     }
 }
