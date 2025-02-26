@@ -50,7 +50,6 @@ void ble_receive_task(void *pvParameter){
         if(connected){
             if (sRemoteCharacteristic->canRead()) {
                 uint8_t value = sRemoteCharacteristic->readUInt8();
-                Serial.print("The characteristic1 value is: ");
                 //添加到队列
                 DataPacket packet;
                 packet.type = 2;
@@ -59,7 +58,6 @@ void ble_receive_task(void *pvParameter){
             }
             if (sRemoteCharacteristic2->canRead()) {
                 uint8_t value = sRemoteCharacteristic2->readUInt8();
-                Serial.print("The characteristic2 value is: ");
                 //添加到队列
                 DataPacket packet;
                 packet.type = 2;

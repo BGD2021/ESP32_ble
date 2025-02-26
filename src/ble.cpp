@@ -3,7 +3,7 @@
 #include "app.hpp"
 //#include "BLEScan.h"
 
-//从机的UUID
+//远程从机的UUID
 static BLEUUID serviceUUID("0000fff0-0000-1000-8000-00805f9b34fb");
 
 static BLEUUID    charUUID("0000fff1-0000-1000-8000-00805f9b34fb");
@@ -21,7 +21,7 @@ BLECharacteristic *pCharacteristic;
 BLECharacteristic *pCharacteristic2;
 
 static BLEAdvertisedDevice* myDevice;
-//主机的UUID
+//作为从机的UUID
 #define SERVICE_UUID        "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
 #define CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
 
@@ -74,6 +74,7 @@ class MyClientCallback : public BLEClientCallbacks {
   void onDisconnect(BLEClient* pclient) {
     connected = false;
     Serial.println("onDisconnect");
+    doScan = true;
   }
 };
 
@@ -191,7 +192,7 @@ void ble_init(){
     //主机初始化
     BLEDevice::init("");
     BLEScan* pBLEScan = BLEDevice::getScan();
-    pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks());
+    pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks());//设置广告回调
     pBLEScan->setInterval(1349);//设置扫描间隔
     pBLEScan->setWindow(449);//设置扫描窗口
     pBLEScan->setActiveScan(true);//设置是否主动扫描
