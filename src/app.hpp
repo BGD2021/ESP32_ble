@@ -3,6 +3,14 @@
 
 #include <Arduino.h>
 
+#define HSPI_MISO 2
+#define HSPI_MOSI 7
+#define HSPI_SCLK 6
+#define HSPI_SS   10
+
+#define HC4051_S0  5
+#define HC4051_S1  18
+#define HC4051_S2  19
 // 数据包结构体
 typedef struct {
     uint8_t type;     // 0: ADC, 1: SPI, 2: BLE

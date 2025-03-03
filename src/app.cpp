@@ -1,7 +1,7 @@
 #include "app.hpp"
 #include<Arduino.h>
 #include "ble.hpp"
-
+#include <SPI.h>
 extern BLERemoteCharacteristic* sRemoteCharacteristic;
 extern BLERemoteCharacteristic* sRemoteCharacteristic2;
 //队列
@@ -12,6 +12,15 @@ extern QueueHandle_t xBLEQueue;
 extern boolean doConnect;
 extern boolean connected;
 extern boolean doScan;
+
+//spi引用和定义
+
+
+uint16_t spiCommand(SPIClass *spi, byte data);
+static const int spiClk = 1000000;  // 1 MHz
+
+//uninitialized pointers to SPI objects
+SPIClass *fspi = NULL;
 
 //任务完成标志
 bool ADC_TASK_COPMLETE = false;
@@ -31,7 +40,7 @@ void adc_task(void *pvParameter){
         uint32_t max = 0;
         uint32_t min = 4096;
         for(int i = 0; i < 5; i++){
-            uint32_t value = analogRead(1);
+            uint32_t value = analogRead(3);
             sum += value;
             if(value > max){
                 max = value;
@@ -42,18 +51,75 @@ void adc_task(void *pvParameter){
         }
         packet.data = (sum - max - min) / 3;
         xQueueSend(xADCQueue, &packet, portMAX_DELAY);
-        // vTaskDelay(1000 / portTICK_PERIOD_MS);//延时1s
+        vTaskDelay(1000 / portTICK_PERIOD_MS);//延时1s
         ADC_TASK_COPMLETE = true;
-        vTaskSuspend(NULL);
+        // vTaskSuspend(NULL);
     }
 }
 /*
 spi通讯读取传感器数据,添加到队列中
 */
 void spi_task(void *pvParameter){
+    fspi = new SPIClass(FSPI);
+    fspi->begin(HSPI_SCLK, HSPI_MISO, HSPI_MOSI, HSPI_SS); 
+  
+    //set up slave select pins as outputs as the Arduino API
+    //doesn't handle automatically pulling SS low
+    pinMode(fspi->pinSS(), OUTPUT);  //VSPI SS
 
+    for(;;){
+        DataPacket packet;
+        packet.type = 1;//SPI
+
+        uint16_t sum = 0;
+        uint16_t max = 0;
+        uint16_t min = 65535;
+        uint16_t receivedData;
+
+        for(int i = 0; i < 5; i++){
+            receivedData = spiCommand(fspi,0x00);
+            
+            sum += receivedData;
+            if(receivedData > max){
+                max = receivedData;
+            }
+            if(receivedData < min){
+                min = receivedData;
+            }
+        }
+        uint16_t value = (sum - max - min) / 3; // 提取温度数据（12位）;然后转换为摄氏度;
+        packet.data = value; //这里packet.data是uint32_t,温度值是float
+
+        xQueueSend(xSPIQueue, &packet, portMAX_DELAY);
+        vTaskDelay(1000 / portTICK_PERIOD_MS);//延时1s
+        SPI_TASK_COPMLETE = true;
+        //Serial.println(packet.data);
+    }
 }
 
+/*
+spi发送与接收函数。
+*/
+uint16_t spiCommand(SPIClass *spi, byte data) {
+
+    uint16_t combinedData = 0;
+  
+    //use it as you would the regular arduino SPI API
+    spi->beginTransaction(SPISettings(spiClk, MSBFIRST, SPI_MODE0));
+    digitalWrite(spi->pinSS(), LOW);  //pull SS slow to prep other end for transfer
+    
+    // 假设先发送高字节然后是低字节
+    byte highByte = spi->transfer(data);  // 发送一个虚拟字节来获取数据
+    byte lowByte = spi->transfer(data);   // 再次发送一个虚拟字节来获取第二个字节
+  
+    digitalWrite(spi->pinSS(), HIGH);  //pull ss high to signify end of data transfer
+    spi->endTransaction();
+  
+    // 合并两个字节为一个16位整数
+    combinedData = (highByte << 8) | lowByte;
+    
+    return combinedData;
+  }
 /*
 蓝牙接收四个传感器的数据，
 */
@@ -115,8 +181,9 @@ void BLESendTask(void *pvParameters) {
       if (uxQueueMessagesWaiting(xSPIQueue) > 0) {
         DataPacket packet;
         xQueueReceive(xSPIQueue, &packet, 0);
+        float tempCelsius = ((packet.data >> 3) & 0x0FFF) * 0.25;
         Serial.print("SPI data: ");
-        Serial.println(packet.data);
+        Serial.println(tempCelsius);
       }
       //检查BLE队列
       if (uxQueueMessagesWaiting(xBLEQueue) > 0) {
