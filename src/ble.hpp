@@ -27,6 +27,8 @@ void printHex(std::string value);
 void ble_init();
 void ble_task(void *pvParameter);
 bool connectToServer();
+bool connectServerByUUID(uint8_t index,BLEUUID service_uuid, BLEUUID char_uuid);
 void BLESendTask(void *pvParameters);
+
 
 #endif // BLE_HPP

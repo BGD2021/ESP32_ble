@@ -3,6 +3,8 @@
 
 #include <Arduino.h>
 
+
+#define MULTI_BLE
 #define HSPI_MISO 2
 #define HSPI_MOSI 7
 #define HSPI_SCLK 6

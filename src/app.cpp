@@ -2,6 +2,27 @@
 #include<Arduino.h>
 #include "ble.hpp"
 #include <SPI.h>
+
+//是否启用多个BLE设备
+
+
+#ifdef MULTI_BLE
+//远程从机的UUID
+static BLEUUID serviceUUID1("0000fff0-0000-1000-8000-00805f9b34fb");
+static BLEUUID    char_uuid1("0000fff1-0000-1000-8000-00805f9b34fb");
+//远程从机的UUID
+static BLEUUID serviceUUID2("0000fff0-0000-1000-8000-00805f9b34fb");
+static BLEUUID    char_uuid2("0000fff1-0000-1000-8000-00805f9b34fb");
+//远程从机的UUID
+static BLEUUID serviceUUID3("0000fff0-0000-1000-8000-00805f9b34fb");
+static BLEUUID    char_uuid3("0000fff1-0000-1000-8000-00805f9b34fb");
+
+extern BLERemoteCharacteristic* sCharacteristic[3];
+#endif
+
+
+static BLEUUID service_uuid("0000fff0-0000-1000-8000-00805f9b34fb");
+static BLEUUID    char_uuid("0000fff1-0000-1000-8000-00805f9b34fb");
 extern BLERemoteCharacteristic* sRemoteCharacteristic;
 extern BLERemoteCharacteristic* sRemoteCharacteristic2;
 //队列
@@ -12,6 +33,10 @@ extern QueueHandle_t xBLEQueue;
 extern boolean doConnect;
 extern boolean connected;
 extern boolean doScan;
+
+/*多链接标志位*/
+extern boolean readyToConnect[3];
+extern boolean connectedDevice[3];
 
 //spi引用和定义
 
@@ -123,6 +148,7 @@ uint16_t spiCommand(SPIClass *spi, byte data) {
 /*
 蓝牙接收四个传感器的数据，
 */
+#ifndef MULTI_BLE
 void ble_receive_task(void *pvParameter){
     for(;;){
         //初始化后开始连接
@@ -135,6 +161,7 @@ void ble_receive_task(void *pvParameter){
             doConnect = false;
         }
         if(connected){
+            // Serial.println("BLE connected");
             if (sRemoteCharacteristic->canRead()) {
                 uint8_t value = sRemoteCharacteristic->readUInt8();
                 //添加到队列
@@ -144,21 +171,134 @@ void ble_receive_task(void *pvParameter){
                 xQueueSend(xBLEQueue, &packet, portMAX_DELAY);
                 BLE_TASK_COPMLETE = true;//任务完成
             }
-            if (sRemoteCharacteristic2->canRead()) {
-                uint8_t value = sRemoteCharacteristic2->readUInt8();
+            // if (sRemoteCharacteristic2->canRead()) {
+            //     uint8_t value = sRemoteCharacteristic2->readUInt8();
+            //     //添加到队列
+            //     DataPacket packet;
+            //     packet.type = 2;
+            //     packet.data = value;
+            //     xQueueSend(xBLEQueue, &packet, portMAX_DELAY);
+            // }
+
+        }else if(doScan){
+            BLEDevice::getScan()->start(0);
+            doScan = false;//重新开始扫描
+        }
+        vTaskDelay(1000 / portTICK_PERIOD_MS);//延时1s
+    }
+}
+#else
+void ble_receive_task(void *pvParameter){
+    for(;;){
+        if(readyToConnect[0]){
+            if (connectServerByUUID(0,serviceUUID1, char_uuid1)) {
+                Serial.println("We are now connected to the BLE Server.");
+            } else {
+                Serial.println("We have failed to connect to the server; there is nothing more we will do.");
+            }
+            readyToConnect[0] = false;
+        }
+        if(connectedDevice[0]){
+            if (sCharacteristic[0]->canRead()) {
+                uint8_t value = sCharacteristic[0]->readUInt8();
+                //添加到队列
+                DataPacket packet;
+                packet.type = 0;
+                packet.data = value;
+                xQueueSend(xBLEQueue, &packet, portMAX_DELAY);
+                BLE_TASK_COPMLETE = true;//任务完成
+            }
+        }
+
+        if(readyToConnect[1]){
+            if (connectServerByUUID(1,serviceUUID2, char_uuid2)) {
+                Serial.println("We are now connected to the BLE Server.");
+            } else {
+                Serial.println("We have failed to connect to the server; there is nothing more we will do.");
+            }
+            readyToConnect[1] = false;
+        }
+        if(connectedDevice[1]){
+            if (sCharacteristic[1]->canRead()) {
+                uint8_t value = sCharacteristic[1]->readUInt8();
+                //添加到队列
+                DataPacket packet;
+                packet.type = 1;
+                packet.data = value;
+                xQueueSend(xBLEQueue, &packet, portMAX_DELAY);
+                BLE_TASK_COPMLETE = true;//任务完成
+            }
+        }
+
+        if(readyToConnect[2]){
+            if (connectServerByUUID(2,serviceUUID3, char_uuid3)) {
+                Serial.println("We are now connected to the BLE Server.");
+            } else {
+                Serial.println("We have failed to connect to the server; there is nothing more we will do.");
+            }
+            readyToConnect[2] = false;
+        }
+        if(connectedDevice[2]){
+            if (sCharacteristic[2]->canRead()) {
+                uint8_t value = sCharacteristic[2]->readUInt8();
                 //添加到队列
                 DataPacket packet;
                 packet.type = 2;
                 packet.data = value;
                 xQueueSend(xBLEQueue, &packet, portMAX_DELAY);
+                BLE_TASK_COPMLETE = true;//任务完成
             }
-        }else if(doScan){
-            BLEDevice::getScan()->start(0);
-            doScan = false;//重新开始扫描
         }
-        vTaskDelay(10000 / portTICK_PERIOD_MS);//延时1s
+
+        if(connectedDevice[0] && connectedDevice[1] && connectedDevice[2]){
+            Serial.println("All devices connected");
+        }
+
+        if(doScan){
+            BLEDevice::getScan()->start(2,false);
+            // doScan = false;//重新开始扫描
+        }
+
+        vTaskDelay(1000 / portTICK_PERIOD_MS);//延时1s
+
+        // //初始化后开始连接
+        // if (doConnect == true) {
+        //     if (connectToServer()) {
+        //         Serial.println("We are now connected to the BLE Server.");
+        //     } else {
+        //         Serial.println("We have failed to connect to the server; there is nothing more we will do.");
+        //     }
+        //     doConnect = false;
+        // }
+        // if(connected){
+        //     // Serial.println("BLE connected");
+        //     if (sRemoteCharacteristic->canRead()) {
+        //         uint8_t value = sRemoteCharacteristic->readUInt8();
+        //         //添加到队列
+        //         DataPacket packet;
+        //         packet.type = 2;
+        //         packet.data = value;
+        //         xQueueSend(xBLEQueue, &packet, portMAX_DELAY);
+        //         BLE_TASK_COPMLETE = true;//任务完成
+        //     }
+        //     // if (sRemoteCharacteristic2->canRead()) {
+        //     //     uint8_t value = sRemoteCharacteristic2->readUInt8();
+        //     //     //添加到队列
+        //     //     DataPacket packet;
+        //     //     packet.type = 2;
+        //     //     packet.data = value;
+        //     //     xQueueSend(xBLEQueue, &packet, portMAX_DELAY);
+        //     // }
+
+        // }else if(doScan){
+        //     BLEDevice::getScan()->start(0);
+        //     doScan = false;//重新开始扫描
+        // }
+        // vTaskDelay(1000 / portTICK_PERIOD_MS);//延时1s
     }
 }
+#endif
+
 
 extern BLECharacteristic *pCharacteristic;
 extern BLECharacteristic *pCharacteristic2;
@@ -190,7 +330,8 @@ void BLESendTask(void *pvParameters) {
         DataPacket packet;
         xQueueReceive(xBLEQueue, &packet, 0);
         Serial.print("BLE data: ");
-        Serial.println(packet.data);
+        Serial.printf("%x\r\n", packet.data);
+        //将hex数据转换为字符串
         char str[10];
         sprintf(str, "%d", packet.data);
         pCharacteristic->setValue(str);
