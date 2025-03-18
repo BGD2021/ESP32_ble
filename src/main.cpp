@@ -39,8 +39,8 @@ void setup() {
     return;
   }
   xTaskCreate(&ble_receive_task, "ble_task", 4096,NULL,5,NULL );
-  // xTaskCreate(&adc_task, "adc_task", 4096,NULL,5,NULL );
-  // xTaskCreate(&spi_task, "spi_task", 4096,NULL,5,NULL );
+  xTaskCreate(&adc_task, "adc_task", 4096,NULL,5,NULL );
+  xTaskCreate(&spi_task, "spi_task", 4096,NULL,5,NULL );
   xTaskCreate(&BLESendTask, "BLESendTask", 4096,NULL,5,NULL );
 } 
 

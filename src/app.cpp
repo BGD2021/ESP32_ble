@@ -65,7 +65,7 @@ void adc_task(void *pvParameter){
         uint32_t max = 0;
         uint32_t min = 4096;
         for(int i = 0; i < 5; i++){
-            uint32_t value = analogRead(3);
+            uint32_t value = analogReadMilliVolts(3);
             sum += value;
             if(value > max){
                 max = value;
@@ -312,6 +312,13 @@ void BLESendTask(void *pvParameters) {
         xQueueReceive(xADCQueue, &packet, 0);
         Serial.print("ADC data: ");
         Serial.println(packet.data);
+        float liu;
+        liu = ((float)packet.data * 3 / 40) - 125;
+        if(liu < 0){
+          liu = 0;
+        }   
+        Serial.printf("电流值:%.3f A\r\n", liu);
+        
         //将hex数据转换为字符串
         char str[10];
         sprintf(str, "%d", packet.data);
@@ -322,7 +329,7 @@ void BLESendTask(void *pvParameters) {
         DataPacket packet;
         xQueueReceive(xSPIQueue, &packet, 0);
         float tempCelsius = ((packet.data >> 3) & 0x0FFF) * 0.25;
-        Serial.print("SPI data: ");
+        Serial.print("温度数据: ");
         Serial.println(tempCelsius);
       }
       //检查BLE队列
