@@ -1,18 +1,22 @@
 #include <Arduino.h>
 #include "BLEDevice.h"
 #include "app.hpp"
+#include "config.h"
 //#include "BLEScan.h"
 
 //远程从机的UUID,这里修改记得同步修改app中的UUID
 static BLEUUID serviceUUID1("0000fff0-0000-1000-8000-00805f9b34fb");
 static BLEUUID    charUUID1("0000fff1-0000-1000-8000-00805f9b34fb");
+static BLEUUID    char2UUID("0000fff2-0000-1000-8000-00805f9b34fb");
 
 static BLEUUID serviceUUID2("00000000-0000-1000-8000-00805f9b34fb");
 static BLEUUID    charUUID2("00000001-0000-1000-8000-00805f9b34fb");
+static BLEUUID    char2UUID2("00000001-0000-1000-8000-00805f9b34fb");
 
 
 static BLEUUID serviceUUID3("00000000-0000-1000-8000-00805f9b34fb");
 static BLEUUID    charUUID3("00000001-0000-1000-8000-00805f9b34fb");
+static BLEUUID    char2UUID3("00000001-0000-1000-8000-00805f9b34fb");
 //连接标志位
 boolean doConnect = false;
 boolean connected = false;
@@ -30,9 +34,11 @@ BLECharacteristic *pCharacteristic;
 BLECharacteristic *pCharacteristic2;
 
 static BLEAdvertisedDevice* myDevice;
-
+BLEAdvertising *beaconAdvertising;
+BLEBeacon dataBeacon;
+BLEServer *beaconServer;
 //多连接
-BLERemoteCharacteristic* sCharacteristic[3];
+BLERemoteCharacteristic* sCharacteristic[3][2];
 static BLEAdvertisedDevice* Device[3];
 boolean readyToConnect[3] = {false, false, false};
 boolean connectedDevice[3] = {false, false, false};
@@ -116,17 +122,17 @@ bool connectToServer() {
     // 防止连接失败，程序跑飞
     if (pRemoteService == nullptr) {
       Serial.print("Failed to find our service UUID: ");
-      Serial.println(serviceUUID1.toString().c_str());
+      Serial.println(serviceUUID[0].toString().c_str());
       pClient->disconnect();
       return false;
     }
     Serial.println(" - Found our service");
 
     //连接特征值
-    sRemoteCharacteristic = pRemoteService->getCharacteristic(charUUID1);
+    sRemoteCharacteristic = pRemoteService->getCharacteristic(charUUID[0]);
     if (sRemoteCharacteristic == nullptr) {
       Serial.print("Failed to find our characteristic UUID: ");
-      Serial.println(charUUID1.toString().c_str());
+      Serial.println(charUUID[0].toString().c_str());
       pClient->disconnect();
       return false;
     }
@@ -160,7 +166,7 @@ bool connectToServer() {
 
 
 /*通过uuid连接从机*/
-bool connectServerByUUID(uint8_t index,BLEUUID service_uuid, BLEUUID char_uuid){
+bool connectServerByUUID(uint8_t index,BLEUUID service_uuid, BLEUUID char_uuid, BLEUUID char2_uuid){
   Serial.print("Forming a connection to ");
   Serial.println(Device[index]->getAddress().toString().c_str());
   
@@ -186,16 +192,23 @@ bool connectServerByUUID(uint8_t index,BLEUUID service_uuid, BLEUUID char_uuid){
   Serial.println(" - Found our service");
 
   //连接特征值
-  sCharacteristic[index] = pRemoteService->getCharacteristic(char_uuid);
-  if (sCharacteristic[index] == nullptr) {
+  sCharacteristic[index][0] = pRemoteService->getCharacteristic(char_uuid);
+  if (sCharacteristic[index][0] == nullptr) {
+    Serial.print("Failed to find our characteristic UUID: ");
+    Serial.println(char_uuid.toString().c_str());
+    pClient->disconnect();
+    return false;
+  }
+  sCharacteristic[index][1] = pRemoteService->getCharacteristic(char2_uuid);
+  if (sCharacteristic[index][1] == nullptr) {
     Serial.print("Failed to find our characteristic UUID: ");
     Serial.println(char_uuid.toString().c_str());
     pClient->disconnect();
     return false;
   }
 
-  if(sCharacteristic[index]->canRead()) {
-    std::string value = sCharacteristic[index]->readValue();
+  if(sCharacteristic[index][0]->canRead()) {
+    std::string value = sCharacteristic[index][0]->readValue();
     Serial.print("The characteristic value was: ");
     Serial.println(value.c_str());
   }
@@ -233,7 +246,7 @@ class MultiAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
       isFoundDevice[2]=true;
       readyToConnect[2] = true;
     }else{
-      Serial.println("No service found");
+      // Serial.println("No service found");
       doScan = true;
     }
     if(isFoundDevice[0] && isFoundDevice[1] && isFoundDevice[2]){
@@ -292,8 +305,6 @@ class MultiAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
 // }
 
 
-
-
 /**
  * 根据serverUUID连接server
  */
@@ -317,30 +328,41 @@ class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
   } 
 }; 
 
+void initBeacon(){
+  BLEDevice::init("ESP32");
+  beaconServer = BLEDevice::createServer();
+  // beaconServer->setCallbacks(new MyServerCallbacks());
+  beaconAdvertising = beaconServer->getAdvertising();
+  beaconAdvertising->stop();
+  // iBeacon
+  dataBeacon.setManufacturerId(0x4c00);
+  dataBeacon.setMajor(5);
+  dataBeacon.setMinor(88);
+  dataBeacon.setSignalPower(0xc5);
+  dataBeacon.setProximityUUID(BLEUUID(BEACON_UUID_REV));
+
+  BLEAdvertisementData advertisementData;
+  advertisementData.setFlags(0x1A);
+  advertisementData.setManufacturerData(dataBeacon.getData());
+  beaconAdvertising->setAdvertisementData(advertisementData);
+
+  beaconAdvertising->start();
+}
+
+void setBeaconMajor(uint16_t major){
+  beaconAdvertising->stop();
+  dataBeacon.setMajor(major);
+  BLEAdvertisementData advertisementData;
+  advertisementData.setFlags(0x1A);
+  advertisementData.setManufacturerData(dataBeacon.getData());
+  beaconAdvertising->setAdvertisementData(advertisementData);
+  beaconAdvertising->start();
+}
+
 void ble_init(){
     
     Serial.println("Starting BLE application...");
-    // xTaskCreate(&blinky, "blinky", 512,NULL,5,NULL );
-    //从机初始化
-    BLEDevice::init("helloESP32");
-    BLEServer *pServer = BLEDevice::createServer();
-    BLEService *pService = pServer->createService(SERVICE_UUID);
-    pCharacteristic = pService->createCharacteristic(
-                                           CHARACTERISTIC_UUID,
-                                           BLECharacteristic::PROPERTY_READ |
-                                           BLECharacteristic::PROPERTY_WRITE
-                                         );
-  
-    pCharacteristic->setValue("Hello World");
-    pService->start();
-    //得到广播对象
-    BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
-    pAdvertising->addServiceUUID(SERVICE_UUID);
-    pAdvertising->setScanResponse(true);//设置是否响应广播
-    pAdvertising->setMinPreferred(0x06); // 设置值越小，广播越频繁
-    pAdvertising->setMinPreferred(0x12);// 设置值越大，广播越不频繁
-    BLEDevice::startAdvertising();//开始广播
-    Serial.println("Characteristic init OK");
+    initBeacon();
   
     //主机初始化
     BLEDevice::init("");
@@ -350,7 +372,7 @@ void ble_init(){
     #else
     pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks());//设置广告回调
     #endif
-    pBLEScan->setInterval(1349);//设置扫描间隔
+    pBLEScan->setInterval(1349);//设置扫描间隔 
     pBLEScan->setWindow(449);//设置扫描窗口
     pBLEScan->setActiveScan(true);//设置是否主动扫描
     pBLEScan->start(5, false);//开始扫描

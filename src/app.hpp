@@ -2,7 +2,7 @@
 #define APP_HPP
 
 #include <Arduino.h>
-
+#include <SPI.h>
 
 #define MULTI_BLE
 #define HSPI_MISO 2

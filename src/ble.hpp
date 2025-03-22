@@ -3,7 +3,9 @@
 
 #include <Arduino.h>
 #include "BLEDevice.h"
-
+#include <BLEUtils.h>
+#include <BLE2902.h>
+#include <BLEBeacon.h>
 // 从机的UUID
 extern BLEUUID serviceUUID;
 extern BLEUUID charUUID;
@@ -27,8 +29,8 @@ void printHex(std::string value);
 void ble_init();
 void ble_task(void *pvParameter);
 bool connectToServer();
-bool connectServerByUUID(uint8_t index,BLEUUID service_uuid, BLEUUID char_uuid);
+bool connectServerByUUID(uint8_t index,BLEUUID service_uuid, BLEUUID char_uuid, BLEUUID char2_uuid);
 void BLESendTask(void *pvParameters);
-
+void setBeaconMajor(uint16_t major);
 
 #endif // BLE_HPP
