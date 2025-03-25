@@ -7,9 +7,9 @@
 #include <BLE2902.h>
 #include <BLEBeacon.h>
 // 从机的UUID
-extern BLEUUID serviceUUID;
-extern BLEUUID charUUID;
-extern BLEUUID charUUID2;
+// extern BLEUUID serviceUUID;
+// extern BLEUUID charUUID;
+// extern BLEUUID charUUID2;
 
 // 连接标志位
 extern boolean doConnect;
@@ -31,6 +31,8 @@ void ble_task(void *pvParameter);
 bool connectToServer();
 bool connectServerByUUID(uint8_t index,BLEUUID service_uuid, BLEUUID char_uuid, BLEUUID char2_uuid);
 void BLESendTask(void *pvParameters);
+void readSensor(uint8_t index);
 void setBeaconMajor(uint16_t major);
+void setBeaconMinor(uint16_t minor);
 
 #endif // BLE_HPP

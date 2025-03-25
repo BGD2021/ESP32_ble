@@ -2,6 +2,7 @@
 #include "utils.hpp"
 #include "config.h"
 
+
 bool isFoundDevice(BLEAdvertisedDevice advertisedDevice){
     uint8_t index = 0;
     for(index=0;index<maxDevice;index++){
@@ -14,7 +15,8 @@ bool isFoundDevice(BLEAdvertisedDevice advertisedDevice){
 
 float adcConvert2Liu(uint16_t adcValue){
     float liu;
-    liu = ((float)adcValue * 3 / 40) - 125;
+    // liu = ((float)adcValue * 3 / 40) - 125;
+    liu = ((float)adcValue * 1.59 / 20) - 125;
     if(liu < 0){
       liu = 0;
     //   Serial.println("电流值小于0,请检查传感器连接");

@@ -3,17 +3,17 @@
 #include "utils.hpp"
 
 
-BLEUUID serviceUUID[] = {
-    BLEUUID("0000fff0-0000-1000-8000-00805f9b34fb"),
-    BLEUUID("fffffff0-0000-1000-8000-00805f9b34fb"),
-    BLEUUID("fffffff0-0000-1000-8000-00805f9b34fb")
-}; 
+// BLEUUID serviceUUID[] = {
+//     BLEUUID("0000fff0-0000-1000-8000-00805f9b34fb"),
+//     BLEUUID("fffffff0-0000-1000-8000-00805f9b34fb"),
+//     BLEUUID("fffffff0-0000-1000-8000-00805f9b34fb")
+// }; 
 
-BLEUUID charUUID[] = {
-    BLEUUID("0000fff1-0000-1000-8000-00805f9b34fb"),
-    BLEUUID("fffffff1-0000-1000-8000-00805f9b34fb"),
-    BLEUUID("fffffff1-0000-1000-8000-00805f9b34fb")
-};
+// BLEUUID charUUID[] = {
+//     BLEUUID("0000fff1-0000-1000-8000-00805f9b34fb"),
+//     BLEUUID("fffffff1-0000-1000-8000-00805f9b34fb"),
+//     BLEUUID("fffffff1-0000-1000-8000-00805f9b34fb")
+// };
 
 
 class bleSlave{
