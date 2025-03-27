@@ -34,5 +34,6 @@ void BLESendTask(void *pvParameters);
 void readSensor(uint8_t index);
 void setBeaconMajor(uint16_t major);
 void setBeaconMinor(uint16_t minor);
+void setBeaconData(uint8_t *dianliu, uint8_t *wendu, uint8_t *distance);
 
 #endif // BLE_HPP

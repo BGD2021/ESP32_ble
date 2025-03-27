@@ -390,6 +390,36 @@ void initBeacon()
   advertisementData.setManufacturerData(dataBeacon.getData());
   beaconAdvertising->setAdvertisementData(advertisementData);
 
+  // 设置扫描回应数据
+  BLEAdvertisementData scanResponseData;
+  scanResponseData.setName("ESP32iBeacon"); // 设置设备名称
+
+  scanResponseData.setFlags(0x06);
+
+  // 添加自定义数值到扫描回应数据
+  uint8_t humidity = 30; // 假设湿度为60%
+  std::string customResponseData;
+  customResponseData.push_back(humidity); // 湿度数据
+  customResponseData.push_back(0x11);     // 自定义数据类型标识符
+  customResponseData.push_back(0x22);
+  customResponseData.push_back(0x33); // 测试数值
+
+  customResponseData.push_back(0x21); // 测试数值
+  customResponseData.push_back(0x21); // 测试数值
+  customResponseData.push_back(0x21); // 测试数值
+  customResponseData.push_back(0x21); // 测试数值
+
+  customResponseData.push_back(0x33); // 测试数值
+  customResponseData.push_back(0x33); // 测试数值
+  customResponseData.push_back(0x33); // 测试数值
+  customResponseData.push_back(0x33); // 测试数值
+
+  // 将自定义数据添加到扫描回应数据
+  scanResponseData.addData(customResponseData);
+
+  // 设置扫描回应数据
+  beaconAdvertising->setScanResponseData(scanResponseData);
+
   beaconAdvertising->start();
 }
 
@@ -412,6 +442,41 @@ void setBeaconMinor(uint16_t minor)
   advertisementData.setFlags(0x1A);
   advertisementData.setManufacturerData(dataBeacon.getData());
   beaconAdvertising->setAdvertisementData(advertisementData);
+  beaconAdvertising->start();
+}
+
+void setBeaconData(uint8_t *dianliu, uint8_t *wendu, uint8_t *distance)
+{
+  beaconAdvertising->stop();
+  // 设置扫描回应数据
+  BLEAdvertisementData scanResponseData;
+  scanResponseData.setName("ESP32iBeacon"); // 设置设备名称
+
+  scanResponseData.setFlags(0x06);
+
+  std::string customResponseData;
+  customResponseData.push_back(dianliu[0]);
+  customResponseData.push_back(wendu[0]);
+  customResponseData.push_back(distance[0]);
+
+  customResponseData.push_back(dianliu[1]);
+  customResponseData.push_back(wendu[1]);
+  customResponseData.push_back(distance[1]);
+
+  customResponseData.push_back(dianliu[2]);
+  customResponseData.push_back(wendu[2]);
+  customResponseData.push_back(distance[2]);
+
+  customResponseData.push_back(dianliu[3]);
+  customResponseData.push_back(wendu[3]);
+  customResponseData.push_back(distance[3]);
+
+  // 将自定义数据添加到扫描回应数据
+  scanResponseData.addData(customResponseData);
+
+  // 设置扫描回应数据
+  beaconAdvertising->setScanResponseData(scanResponseData);
+
   beaconAdvertising->start();
 }
 
